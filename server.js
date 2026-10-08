@@ -22,7 +22,7 @@ app.use(cors()); app.use(express.json({limit:'2mb'})); app.use(express.urlencode
 const uploadDir=path.join(__dirname,'uploads');
 const storage=multer.diskStorage({destination:uploadDir,filename:(_r,f,cb)=>cb(null,Date.now()+'-'+f.originalname.replace(/[^a-zA-Z0-9._-]/g,'_'))});
 const upload=multer({storage,limits:{fileSize:5*1024*1024}});
-app.use('/uploads',express.static(uploadDir)); app.use(express.static(path.join(__dirname,'../frontend')));
+app.use('/uploads',express.static(uploadDir)); app.use(express.static(path.join(__dirname, 'frontend')));
 
 function token(u){return jwt.sign({id:u._id.toString(),role:u.role,name:u.name,email:u.email},process.env.JWT_SECRET,{expiresIn:'2d'})}
 function safeUser(u){return {id:u._id,name:u.name,email:u.email,role:u.role}}
@@ -47,8 +47,8 @@ app.get('/api/missing',auth,admin,async(_req,res)=>res.json(await MissingPerson.
 app.patch('/api/missing/:id',auth,admin,async(req,res)=>{const m=await MissingPerson.findByIdAndUpdate(req.params.id,{status:req.body.status},{new:true});if(!m)return res.status(404).json({message:'Missing person not found'});io.emit('missing:update',m);res.json(m)});
 
 app.get('/api/me',auth,async(req,res)=>res.json({user:req.user}));
-app.get('/',(_req,res)=>res.sendFile(path.join(__dirname,'../frontend/index.html')));
-app.use((_req,res)=>res.status(404).json({message:'Route not found'}));
 
+app.use((_req,res)=>res.status(404).json({message:'Route not found'}));
+app.get('/',(_req,res)=>res.sendFile(path.join(__dirname,'frontend/index.html')));
 async function start(){try{await mongoose.connect(process.env.MONGODB_URI);console.log('MongoDB connected');const email=process.env.ADMIN_EMAIL?.toLowerCase();if(email&&process.env.ADMIN_PASSWORD){let a=await User.findOne({email});if(!a)await User.create({name:'System Admin',email,password:await bcrypt.hash(process.env.ADMIN_PASSWORD,10),role:'admin'});else if(a.role!=='admin'){a.role='admin';await a.save()}}const port=process.env.PORT||5000;httpServer.listen(port,()=>console.log(`FloodAI running at http://localhost:${port}`))}catch(e){console.error('Startup failed:',e.message);process.exit(1)}}
 start();
